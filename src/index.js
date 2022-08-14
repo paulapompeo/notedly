@@ -1,6 +1,7 @@
 const express = require('express');
 const { ApolloServer } = require('apollo-server-express');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 
 const db = require('./db');
 const models = require('./models');
@@ -15,13 +16,32 @@ const app = express();
 
 db.connect(DB_HOST);
 
+// het the user info from a JWT
+const getUser = token => {
+  if (token) {
+    try {
+      // return the user information form token
+      return jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      // if theres a problem with the token, throw an error
+      throw new Error('Session Invalid');
+    }
+  }
+};
+
 // Apollo Server setup
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  context: () => {
-    // add the db models to the context
-    return { models };
+  context: ({ req }) => {
+    // get the user token from the headers
+    const token = req.headers.authorization;
+    // try to retrieve a user with the token
+    const user = getUser(token);
+    // for now, lets log the user to the console
+    console.log(user);
+    // add the db models and user to the context
+    return { models, user };
   }
 });
 
